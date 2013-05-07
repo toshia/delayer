@@ -18,5 +18,17 @@ module Delayer
       @state = :done
       @proc = nil
     end
+
+    # insert node between self and self.next
+    # ==== Args
+    # [node] insertion
+    # ==== Return
+    # node
+    def break(node)
+      tail = @next
+      @next = node
+      node.next = tail
+      node
+    end
   end
 end

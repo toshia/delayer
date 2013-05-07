@@ -3,6 +3,7 @@ require "delayer/version"
 require "delayer/error"
 require "delayer/extend"
 require "delayer/procedure"
+require "delayer/priority"
 require "monitor"
 
 module Delayer
@@ -22,8 +23,11 @@ module Delayer
   # A new class
   def self.generate_class(options = {})
     if options[:priority]
-      Class.new(Priority(options)) do
+      Class.new do
+        include Priority
         @expire = options[:expire] || 0
+        @priorities = options[:priority]
+        @default_priority = options[:default]
       end
     else
       Class.new do
@@ -35,7 +39,7 @@ module Delayer
 
   Default = generate_class
 
-  def initialize
+  def initialize(*args)
     super
     @procedure = Procedure.new(self, &Proc.new)
   end

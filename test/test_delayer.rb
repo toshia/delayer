@@ -66,16 +66,86 @@ class TestDelayer < Test::Unit::TestCase
     assert_equal(0, delayer.size)
   end
 
-  # def test_priority
-  #   delayer = Delayer.generate_class(priority: [:high, :middle, :low],
-  #                                    default: :middle)
-  #   buffer = []
-  #   delayer.new(:low) { buffer << 1 }
-  #   delayer.new(:middle) { buffer << 2 }
-  #   delayer.new(:high) { buffer << 3 }
-  #   delayer.new(:middle) { buffer << 4 }
-  #   delayer.new(:low) { buffer << 5 }
-  #   delayer.run
-  #   assert_equal([3,2,4,1,5], buffer)
-  # end
+  def test_priority_asc
+    delayer = Delayer.generate_class(priority: [:high, :middle, :low],
+                                     default: :middle)
+    buffer = []
+    delayer.new(:high) { buffer << 1 }
+    delayer.new(:middle) { buffer << 2 }
+    delayer.new(:low) { buffer << 3 }
+    delayer.run
+    assert_equal([1,2,3], buffer)
+  end
+
+  def test_priority_desc
+    delayer = Delayer.generate_class(priority: [:high, :middle, :low],
+                                     default: :middle)
+    buffer = []
+    delayer.new(:low) { buffer << 3 }
+    delayer.new(:middle) { buffer << 2 }
+    delayer.new(:high) { buffer << 1 }
+    delayer.run
+    assert_equal([1,2,3], buffer)
+  end
+
+  def test_priority_complex
+    delayer = Delayer.generate_class(priority: [:high, :middle, :low],
+                                     default: :middle)
+    buffer = []
+    delayer.new(:high) { buffer << 1 }
+    delayer.new(:middle) { buffer << 2 }
+    delayer.new(:low) { buffer << 3 }
+    delayer.new(:middle) { buffer << 4 }
+    delayer.new(:high) { buffer << 5 }
+    delayer.new(:middle) { buffer << 6 }
+    delayer.new(:low) { buffer << 7 }
+    delayer.new(:middle) { buffer << 8 }
+    delayer.new(:high) { buffer << 9 }
+    delayer.run
+    assert_equal([1,5,9,2,4,6,8,3,7], buffer)
+
+    buffer = []
+    delayer.new(:high) { buffer << 1 }
+    delayer.new(:low) { buffer << 2 }
+    delayer.new(:high) { buffer << 3 }
+    delayer.new(:low) { buffer << 4 }
+    delayer.run
+    assert_equal([1,3,2,4], buffer)
+  end
+
+  def test_multithread_register
+    delayer = Delayer.generate_class
+    buffer = []
+    threads = []
+    10.times do
+      threads << Thread.new do
+        1000.times do |number|
+          delayer.new { buffer << number }
+        end
+      end
+    end
+    delayer.run
+    threads.each &:join
+    delayer.run
+    assert_equal(10000, buffer.size)
+    assert_equal((0..999).inject(&:+)*10, buffer.inject(&:+))
+  end
+
+  def test_nested
+    delayer = Delayer.generate_class
+    buffer = []
+    delayer.new { buffer << 1 }
+    delayer.new do
+      delayer.new { buffer << 3 }
+      delayer.new do
+        delayer.new { buffer << 5 }
+        delayer.new { buffer << 6 }
+      end
+      delayer.new { buffer << 4 }
+    end
+    delayer.new { buffer << 2 }
+
+    delayer.run
+    assert_equal([1,2,3,4,5,6], buffer)
+  end
 end

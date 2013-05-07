@@ -4,6 +4,15 @@ module Delayer
   module Extend
     attr_accessor :expire
 
+    def self.extended(klass)
+      klass.class_eval do
+        @first_pointer = @last_pointer = nil
+        @busy = false
+        @expire = 0
+        @lock = Mutex.new
+      end
+    end
+
     # Run registered jobs.
     # ==== Args
     # [current_expire] expire for processing (secs, 0=unexpired)
@@ -23,14 +32,7 @@ module Delayer
     # self
     def run_once
       @busy = true
-      if @first_pointer
-        @lock.synchronize {
-          prev_pointer = @first_pointer
-          @first_pointer = @first_pointer.next
-          @last_pointer = nil unless @first_pointer
-          prev_pointer
-        }.run
-      end
+      forward.run if @first_pointer
     ensure
       @busy = false
     end
@@ -68,24 +70,30 @@ module Delayer
     # ==== Return
     # self
     def register(procedure)
-      @lock.synchronize do
+      lock.synchronize do
         if @last_pointer
-          @last_pointer.next = procedure
+          @last_pointer = @last_pointer.break procedure
         else
-          @first_pointer = procedure
+          @last_pointer = @first_pointer = procedure
         end
-        @last_pointer = procedure
       end
       self
     end
 
-    def self.extended(klass)
-      klass.class_eval do
-        @first_pointer = @last_pointer = nil
-        @busy = false
-        @expire = 0
-        @lock = Mutex.new
+    private
+
+    def forward
+      lock.synchronize do
+        prev = @first_pointer
+        @first_pointer = @first_pointer.next
+        @last_pointer = nil unless @first_pointer
+        prev
       end
     end
+
+    def lock
+      @lock
+    end
+
   end
 end
