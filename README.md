@@ -18,17 +18,17 @@ Or install it yourself as:
 
 ## Usage
 
-Task = Delayer.generate_class # Define basic class
-Task = Delayer.generate_class(priority: [:high, :middle, :low], default: :middle) # or, Priority delayer
-Task = Delayer.generate_class(expire: 0.5) # and/or, Time limited delayer.
-
-task = Task.new { delayed code ... } # Register task
-task = Task.new(:high) { delayed code ... } # or, You can specify priority.
-
-task.cancel # Task can cancel before Delayer#run.
-
-Task.run # Execute all tasks.
-Task.run(1) # or, You can specify expire.
+    Task = Delayer.generate_class # Define basic class
+    Task = Delayer.generate_class(priority: [:high, :middle, :low], default: :middle) # or, Priority delayer
+    Task = Delayer.generate_class(expire: 0.5) # and/or, Time limited delayer.
+    
+    task = Task.new { delayed code ... } # Register task
+    task = Task.new(:high) { delayed code ... } # or, You can specify priority.
+    
+    task.cancel # Task can cancel before Delayer#run.
+    
+    Task.run # Execute all tasks.
+    Task.run(1) # or, You can specify expire.
 
 ## Contributing
 
