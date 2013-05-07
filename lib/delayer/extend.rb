@@ -31,8 +31,12 @@ module Delayer
     # ==== Return
     # self
     def run_once
-      @busy = true
-      forward.run if @first_pointer
+      if @first_pointer
+        @busy = true
+        procedure = forward
+        procedure = forward while @first_pointer and procedure.canceled?
+        procedure.run unless procedure.canceled?
+      end
     ensure
       @busy = false
     end

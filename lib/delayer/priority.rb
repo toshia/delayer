@@ -11,7 +11,7 @@ module Delayer
       end
     end
 
-    def initialize(priority, *args)
+    def initialize(priority = self.class.instance_eval{ @default_priority }, *args)
       @priority = priority
       super(*args)
     end

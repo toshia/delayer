@@ -11,12 +11,39 @@ module Delayer
       @delayer.class.register(self)
     end
 
+    # Run a process
+    # ==== Exception
+    # Delayer::TooLate :: if already called run()
+    # ==== Return
+    # node
     def run
-      raise Delayer::Error, "call twice Delayer::Procedure" unless :stop == @state
+      unless :stop == @state
+        raise Delayer::StateError(@state), "call twice Delayer::Procedure"
+      end
       @state = :run
       @proc.call
       @state = :done
       @proc = nil
+    end
+
+    # Cancel this job
+    # ==== Exception
+    # Delayer::TooLate :: if already called run()
+    # ==== Return
+    # self
+    def cancel
+      unless :stop == @state
+        raise Delayer::StateError(@state), "cannot cancel Delayer::Procedure"
+      end
+      @state = :cancel
+      self
+    end
+
+    # Return true if canceled this task
+    # ==== Return
+    # true if canceled this task
+    def canceled?
+      :cancel == @state
     end
 
     # insert node between self and self.next

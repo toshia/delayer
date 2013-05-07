@@ -66,6 +66,45 @@ class TestDelayer < Test::Unit::TestCase
     assert_equal(0, delayer.size)
   end
 
+  def test_cancel_begin
+    delayer = Delayer.generate_class
+    a = 0
+    d = delayer.new { a += 1 }
+    delayer.new { a += 2 }
+    delayer.new { a += 4 }
+
+    assert_equal(0, a)
+    d.cancel
+    delayer.run
+    assert_equal(6, a)
+  end
+
+  def test_cancel_center
+    delayer = Delayer.generate_class
+    a = 0
+    delayer.new { a += 1 }
+    d = delayer.new { a += 2 }
+    delayer.new { a += 4 }
+
+    assert_equal(0, a)
+    d.cancel
+    delayer.run
+    assert_equal(5, a)
+  end
+
+  def test_cancel_end
+    delayer = Delayer.generate_class
+    a = 0
+    delayer.new { a += 1 }
+    delayer.new { a += 2 }
+    d = delayer.new { a += 4 }
+
+    assert_equal(0, a)
+    d.cancel
+    delayer.run
+    assert_equal(3, a)
+  end
+
   def test_priority_asc
     delayer = Delayer.generate_class(priority: [:high, :middle, :low],
                                      default: :middle)
@@ -111,6 +150,99 @@ class TestDelayer < Test::Unit::TestCase
     delayer.new(:low) { buffer << 4 }
     delayer.run
     assert_equal([1,3,2,4], buffer)
+  end
+
+  def test_priority_cancel_begin
+    delayer = Delayer.generate_class(priority: [:high, :middle, :low],
+                                     default: :middle)
+    a = 0
+    d = delayer.new { a += 1 }
+    delayer.new { a += 2 }
+    delayer.new { a += 4 }
+    assert_equal(0, a)
+    d.cancel
+    delayer.run
+    assert_equal(6, a)
+
+    a = 0
+    d = delayer.new(:low) { a += 1 }
+    delayer.new(:high) { a += 2 }
+    delayer.new(:high) { a += 4 }
+    assert_equal(0, a)
+    d.cancel
+    delayer.run
+    assert_equal(6, a)
+
+    a = 0
+    d = delayer.new(:high) { a += 1 }
+    delayer.new(:low) { a += 2 }
+    delayer.new(:low) { a += 4 }
+    assert_equal(0, a)
+    d.cancel
+    delayer.run
+    assert_equal(6, a)
+  end
+
+  def test_priority_cancel_center
+    delayer = Delayer.generate_class(priority: [:high, :middle, :low],
+                                     default: :middle)
+    a = 0
+    delayer.new { a += 1 }
+    d = delayer.new { a += 2 }
+    delayer.new { a += 4 }
+    assert_equal(0, a)
+    d.cancel
+    delayer.run
+    assert_equal(5, a)
+
+    a = 0
+    delayer.new(:low) { a += 1 }
+    d = delayer.new(:high) { a += 2 }
+    delayer.new(:low) { a += 4 }
+    assert_equal(0, a)
+    d.cancel
+    delayer.run
+    assert_equal(5, a)
+
+    a = 0
+    delayer.new(:high) { a += 1 }
+    d = delayer.new(:low) { a += 2 }
+    delayer.new(:high) { a += 4 }
+    assert_equal(0, a)
+    d.cancel
+    delayer.run
+    assert_equal(5, a)
+  end
+
+  def test_priority_cancel_end
+    delayer = Delayer.generate_class(priority: [:high, :middle, :low],
+                                     default: :middle)
+    a = 0
+    delayer.new { a += 1 }
+    delayer.new { a += 2 }
+    d = delayer.new { a += 4 }
+    assert_equal(0, a)
+    d.cancel
+    delayer.run
+    assert_equal(3, a)
+
+    a = 0
+    delayer.new(:low) { a += 1 }
+    delayer.new(:low) { a += 2 }
+    d = delayer.new(:high) { a += 4 }
+    assert_equal(0, a)
+    d.cancel
+    delayer.run
+    assert_equal(3, a)
+
+    a = 0
+    delayer.new(:high) { a += 1 }
+    delayer.new(:high) { a += 2 }
+    d = delayer.new(:low) { a += 4 }
+    assert_equal(0, a)
+    d.cancel
+    delayer.run
+    assert_equal(3, a)
   end
 
   def test_multithread_register
