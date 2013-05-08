@@ -6,6 +6,10 @@ require 'test/unit'
 require 'delayer'
 
 class TestDelayer < Test::Unit::TestCase
+  def setup
+    Delayer.default = nil
+  end
+
   def test_delayed
     delayer = Delayer.generate_class
     a = 0
@@ -13,6 +17,15 @@ class TestDelayer < Test::Unit::TestCase
 
     assert_equal(0, a)
     delayer.run
+    assert_equal(1, a)
+  end
+
+  def test_default
+    a = 0
+    Delayer.new { a = 1 }
+
+    assert_equal(0, a)
+    Delayer.run
     assert_equal(1, a)
   end
 
