@@ -12,6 +12,7 @@ module Delayer
     end
 
     def initialize(priority = self.class.instance_eval{ @default_priority }, *args)
+      self.class.validate_priority priority
       @priority = priority
       super(*args)
     end
@@ -51,6 +52,12 @@ module Delayer
         else
           next_index = @priorities.index(priority) - 1
           get_prev_point @priorities[next_index] if 0 <= next_index
+        end
+      end
+
+      def validate_priority(symbol)
+        unless @priorities.include? symbol
+          raise Delayer::InvalidPriorityError, "undefined priority '#{symbol}'"
         end
       end
 

@@ -6,6 +6,7 @@ module Delayer
   class AlreadyExecutedError < TooLate; end
   class AlreadyCanceledError < TooLate; end
   class AlreadyRunningError < TooLate; end
+  class InvalidPriorityError < Error; end
   def self.StateError(state)
     case state
     when :run

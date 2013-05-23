@@ -9,6 +9,8 @@ module Delayer
         @first_pointer = @last_pointer = nil
         @busy = false
         @expire = 0
+        @remain_hook = nil
+        @remain_received = false
         @lock = Mutex.new
       end
     end
@@ -24,6 +26,10 @@ module Delayer
       else
         end_time = Time.new.to_f + @expire
         run_once while not(empty?) and end_time >= Time.new.to_f
+      end
+      if @remain_hook
+        @remain_received = !empty?
+        @remain_hook.call if @remain_received  
       end
     end
 
@@ -80,8 +86,16 @@ module Delayer
         else
           @last_pointer = @first_pointer = procedure
         end
+        if @remain_hook and not @remain_received
+          @remain_received = true
+          @remain_hook.call
+        end
       end
       self
+    end
+
+    def register_remain_hook
+      @remain_hook = Proc.new
     end
 
     private

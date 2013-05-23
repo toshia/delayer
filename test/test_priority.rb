@@ -238,4 +238,20 @@ class TestPriorityDelayer < Test::Unit::TestCase
     delayer.run
     assert_equal([1,2,3,4,5,6], buffer)
   end
+
+  def test_invalid_priority
+    delayer = Delayer.generate_class(priority: [:high, :middle, :low])
+    buffer = []
+    assert_raise Delayer::InvalidPriorityError do
+      delayer.new(0) { buffer << 1 }
+    end
+    assert_raise Delayer::InvalidPriorityError do
+      delayer.new("middle") { buffer << 2 }
+    end
+    assert_raise Delayer::InvalidPriorityError do
+      delayer.new { buffer << 3 }
+    end
+    delayer.run
+    assert_equal([], buffer)
+  end
 end

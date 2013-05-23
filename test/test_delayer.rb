@@ -293,4 +293,25 @@ class TestDelayer < Test::Unit::TestCase
     delayer.run
     assert_equal([1,2,3,4,5,6], buffer)
   end
+
+  def test_remain_hook
+    delayer = Delayer.generate_class expire: 0.01
+    a = []
+    delayer.register_remain_hook {
+      a << :remain
+    }
+    delayer.new { a << 0 }
+    delayer.new { a << 1; sleep 0.1 }
+    delayer.new { a << 2 }
+
+    delayer.run
+
+    delayer.new { a << 3 }
+    delayer.new { a << 4 }
+
+    delayer.run
+
+    assert_equal([:remain, 0, 1, :remain, 2, 3, 4], a)
+
+  end
 end
