@@ -42,6 +42,10 @@ module Delayer
           if @last_pointer
             @last_pointer = @priority_pointer[priority]
           end
+          if @remain_hook and not @remain_received
+            @remain_received = true
+            @remain_hook.call
+          end
         end
         self
       end
