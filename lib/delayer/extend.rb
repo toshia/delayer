@@ -24,12 +24,21 @@ module Delayer
       if 0 == current_expire
         run_once while not empty?
       else
-        end_time = Time.new.to_f + @expire
-        run_once while not(empty?) and end_time >= Time.new.to_f
+        @end_time = Time.new.to_f + @expire
+        run_once while not(empty?) and @end_time >= Time.new.to_f
+        @end_time = nil
       end
       if @remain_hook
         @remain_received = !empty?
         @remain_hook.call if @remain_received  
+      end
+    end
+
+    def expire?
+      if defined?(@end_time) and @end_time
+        @end_time < Time.new.to_f
+      else
+        false
       end
     end
 
