@@ -3,6 +3,7 @@
 module Delayer
   module Extend
     attr_accessor :expire
+    attr_reader :exception
 
     def self.extended(klass)
       klass.class_eval do
@@ -10,6 +11,7 @@ module Delayer
         @busy = false
         @expire = 0
         @remain_hook = nil
+        @exception = nil
         @remain_received = false
         @lock = Mutex.new
       end
@@ -32,6 +34,9 @@ module Delayer
         @remain_received = !empty?
         @remain_hook.call if @remain_received  
       end
+    rescue Exception => e
+      @exception = e
+      raise e
     end
 
     def expire?
