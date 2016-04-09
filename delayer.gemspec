@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
   spec.email         = ["toshi.alternative@gmail.com"]
   spec.description   = %q{Delay the processing}
   spec.summary       = %q{Delay the processing}
-  spec.homepage      = ""
+  spec.homepage      = "https://github.com/toshia/delayer"
   spec.license       = "MIT"
 
   spec.files         = `git ls-files`.split($/)
