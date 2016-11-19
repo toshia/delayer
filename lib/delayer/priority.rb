@@ -75,6 +75,7 @@ module Delayer
           @priority_pointer.each do |priority, pointer|
             @priority_pointer[priority] = @first_pointer if prev == pointer
           end
+          prev.next = nil
           prev
         end
       end

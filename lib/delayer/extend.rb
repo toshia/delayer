@@ -119,6 +119,7 @@ module Delayer
         prev = @first_pointer
         @first_pointer = @first_pointer.next
         @last_pointer = nil unless @first_pointer
+        prev.next = nil
         prev
       end
     end
