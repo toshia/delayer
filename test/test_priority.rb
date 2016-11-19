@@ -214,7 +214,7 @@ class TestPriorityDelayer < Test::Unit::TestCase
       end
     end
     delayer.run
-    threads.each &:join
+    threads.each(&:join)
     delayer.run
     assert_equal(10000, buffer.size)
     assert_equal((0..999).inject(&:+)*10, buffer.inject(&:+))
