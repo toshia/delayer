@@ -24,17 +24,15 @@ module Delayer
     # ==== Return
     # A new class
     def generate_class(options = {})
-      if options[:priority]
-        Class.new do
-          include Priority
-          @expire = options[:expire] || 0
+      Class.new do
+        include Priority
+        @expire = options[:expire] || 0
+        if options.has_key?(:priority)
           @priorities = options[:priority]
           @default_priority = options[:default]
-        end
-      else
-        Class.new do
-          include ::Delayer
-          @expire = options[:expire] || 0
+        else
+          @priorities = [:normal]
+          @default_priority = :normal
         end
       end
     end
