@@ -3,6 +3,8 @@
 module Delayer
   attr_reader :priority
 
+  Bucket = Struct.new(:first, :last, :priority_of)
+
   def self.included(klass)
     klass.class_eval do
       extend Extend
@@ -31,14 +33,13 @@ module Delayer
 
     def self.extended(klass)
       klass.class_eval do
-        @first_pointer = @last_pointer = nil
         @busy = false
         @expire = 0
         @remain_hook = nil
         @exception = nil
         @remain_received = false
         @lock = Mutex.new
-        @priority_pointer = {}
+        @bucket = Bucket.new(nil, nil, {})
       end
     end
 
@@ -76,10 +77,10 @@ module Delayer
     # ==== Return
     # self
     def run_once
-      if @first_pointer
+      if @bucket.first
         @busy = true
         procedure = forward
-        procedure = forward while @first_pointer and procedure.canceled?
+        procedure = forward while @bucket.first and procedure.canceled?
         procedure.run unless procedure.canceled?
       end
     ensure
@@ -99,13 +100,13 @@ module Delayer
     # ==== Return
     # true if no jobs has.
     def empty?
-      !@first_pointer
+      !@bucket.first
     end
 
     # Return remain jobs quantity.
     # ==== Return
     # Count of remain jobs
-    def size(node = @first_pointer)
+    def size(node = @bucket.first)
       if node
         1 + size(node.next)
       else
@@ -123,13 +124,13 @@ module Delayer
       lock.synchronize do
         last_pointer = get_prev_point(priority)
         if last_pointer
-          @priority_pointer[priority] = last_pointer.break procedure
+          @bucket.priority_of[priority] = last_pointer.break procedure
         else
-          procedure.next = @first_pointer
-          @priority_pointer[priority] = @first_pointer = procedure
+          procedure.next = @bucket.first
+          @bucket.priority_of[priority] = @bucket.first = procedure
         end
-        if @last_pointer
-          @last_pointer = @priority_pointer[priority]
+        if @bucket.last
+          @bucket.last = @bucket.priority_of[priority]
         end
         if @remain_hook and not @remain_received
           @remain_received = true
@@ -144,8 +145,8 @@ module Delayer
     end
 
     def get_prev_point(priority)
-      if @priority_pointer[priority]
-        @priority_pointer[priority]
+      if @bucket.priority_of[priority]
+        @bucket.priority_of[priority]
       else
         next_index = @priorities.index(priority) - 1
         get_prev_point @priorities[next_index] if 0 <= next_index
@@ -162,11 +163,11 @@ module Delayer
 
     def forward
       lock.synchronize do
-        prev = @first_pointer
-        @first_pointer = @first_pointer.next
-        @last_pointer = nil unless @first_pointer
-        @priority_pointer.each do |priority, pointer|
-          @priority_pointer[priority] = @first_pointer if prev == pointer
+        prev = @bucket.first
+        @bucket.first = @bucket.first.next
+        @bucket.last = nil unless @bucket.first
+        @bucket.priority_of.each do |priority, pointer|
+          @bucket.priority_of[priority] = @bucket.first if prev == pointer
         end
         prev.next = nil
         prev
