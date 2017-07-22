@@ -41,19 +41,4 @@ module Delayer
       (@default ||= generate_class).__send__(*args, &proc)
     end
   end
-
-  def initialize(*args)
-    super
-    @procedure = Procedure.new(self, &Proc.new)
-  end
-
-  # Cancel this job
-  # ==== Exception
-  # Delayer::AlreadyExecutedError :: if already called run()
-  # ==== Return
-  # self
-  def cancel
-    @procedure.cancel
-    self
-  end
 end

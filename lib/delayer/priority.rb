@@ -14,7 +14,17 @@ module Delayer
     def initialize(priority = self.class.instance_eval{ @default_priority }, *args)
       self.class.validate_priority priority
       @priority = priority
-      super(*args)
+      @procedure = Procedure.new(self, &Proc.new)
+    end
+
+    # Cancel this job
+    # ==== Exception
+    # Delayer::AlreadyExecutedError :: if already called run()
+    # ==== Return
+    # self
+    def cancel
+      @procedure.cancel
+      self
     end
 
     module Extend
