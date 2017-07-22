@@ -1,6 +1,30 @@
 # -*- coding: utf-8 -*-
 
 module Delayer
+  attr_reader :priority
+
+  def self.included(klass)
+    klass.class_eval do
+      extend Extend
+    end
+  end
+
+  def initialize(priority = self.class.instance_eval{ @default_priority }, *args)
+    self.class.validate_priority priority
+    @priority = priority
+    @procedure = Procedure.new(self, &Proc.new)
+  end
+
+  # Cancel this job
+  # ==== Exception
+  # Delayer::AlreadyExecutedError :: if already called run()
+  # ==== Return
+  # self
+  def cancel
+    @procedure.cancel
+    self
+  end
+
   module Extend
     attr_accessor :expire
     attr_reader :exception
@@ -14,6 +38,7 @@ module Delayer
         @exception = nil
         @remain_received = false
         @lock = Mutex.new
+        @priority_pointer = {}
       end
     end
 
@@ -94,11 +119,17 @@ module Delayer
     # ==== Return
     # self
     def register(procedure)
+      priority = procedure.delayer.priority
       lock.synchronize do
-        if @last_pointer
-          @last_pointer = @last_pointer.break procedure
+        last_pointer = get_prev_point(priority)
+        if last_pointer
+          @priority_pointer[priority] = last_pointer.break procedure
         else
-          @last_pointer = @first_pointer = procedure
+          procedure.next = @first_pointer
+          @priority_pointer[priority] = @first_pointer = procedure
+        end
+        if @last_pointer
+          @last_pointer = @priority_pointer[priority]
         end
         if @remain_hook and not @remain_received
           @remain_received = true
@@ -112,6 +143,21 @@ module Delayer
       @remain_hook = Proc.new
     end
 
+    def get_prev_point(priority)
+      if @priority_pointer[priority]
+        @priority_pointer[priority]
+      else
+        next_index = @priorities.index(priority) - 1
+        get_prev_point @priorities[next_index] if 0 <= next_index
+      end
+    end
+
+    def validate_priority(symbol)
+      unless @priorities.include? symbol
+        raise Delayer::InvalidPriorityError, "undefined priority '#{symbol}'"
+      end
+    end
+
     private
 
     def forward
@@ -119,6 +165,9 @@ module Delayer
         prev = @first_pointer
         @first_pointer = @first_pointer.next
         @last_pointer = nil unless @first_pointer
+        @priority_pointer.each do |priority, pointer|
+          @priority_pointer[priority] = @first_pointer if prev == pointer
+        end
         prev.next = nil
         prev
       end
@@ -127,6 +176,5 @@ module Delayer
     def lock
       @lock
     end
-
   end
 end

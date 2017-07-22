@@ -3,16 +3,11 @@ require "delayer/version"
 require "delayer/error"
 require "delayer/extend"
 require "delayer/procedure"
-require "delayer/priority"
 require "monitor"
 
 module Delayer
   class << self
     attr_accessor :default
-
-    def included(klass)
-      klass.extend Extend
-    end
 
     # Generate new Delayer class.
     # ==== Args
@@ -25,7 +20,7 @@ module Delayer
     # A new class
     def generate_class(options = {})
       Class.new do
-        include Priority
+        include ::Delayer
         @expire = options[:expire] || 0
         if options.has_key?(:priority)
           @priorities = options[:priority]
