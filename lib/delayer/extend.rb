@@ -3,7 +3,15 @@
 module Delayer
   attr_reader :priority
 
-  Bucket = Struct.new(:first, :last, :priority_of)
+  Bucket = Struct.new(:first, :last, :priority_of, :stashed) do
+    def stash_size
+      if stashed
+        1 + stashed.stash_size
+      else
+        0
+      end
+    end
+  end
 
   def self.included(klass)
     klass.class_eval do
@@ -39,7 +47,7 @@ module Delayer
         @exception = nil
         @remain_received = false
         @lock = Mutex.new
-        @bucket = Bucket.new(nil, nil, {})
+        @bucket = Bucket.new(nil, nil, {}, nil)
       end
     end
 
@@ -157,6 +165,29 @@ module Delayer
       unless @priorities.include? symbol
         raise Delayer::InvalidPriorityError, "undefined priority '#{symbol}'"
       end
+    end
+
+    # Delayerの再帰レベルをインクリメントする。
+    # このメソッドが呼ばれたら、その時存在するジョブは退避され、recursive_pop!が呼ばれるまで実行されない。
+    def recursive_push!
+      @bucket = Bucket.new(nil, nil, {}, @bucket)
+      self
+    end
+
+    # Delayerの再帰レベルをデクリメントする。
+    # このメソッドを呼ぶ前に、現在のレベルに存在するすべてのジョブを実行し、Delayer#empty?がtrueを返すような状態になっている必要がある。
+    # ==== Raises
+    # [Delayer::NoLowerLevelError] recursive_push!が呼ばれていない時
+    # [Delayer::RemainJobsError] ジョブが残っているのにこのメソッドを呼んだ時
+    def recursive_pop!
+      raise Delayer::NoLowerLevelError, 'recursive_pop! called in level 0.' if !@bucket.stashed
+      raise Delayer::RemainJobsError, 'Current level has remain jobs. It must be empty current level jobs in call this method.' if !self.empty?
+      @bucket = @bucket.stashed
+    end
+
+    # 現在のDelayer再帰レベルを返す。
+    def recursive_level
+      @bucket.stash_size
     end
 
     private

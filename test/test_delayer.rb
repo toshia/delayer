@@ -314,4 +314,43 @@ class TestDelayer < Test::Unit::TestCase
     assert_equal([:remain, 0, 1, :remain, 2, 3, 4], a)
 
   end
+
+  def test_recursive_mainloop
+    delayer = Delayer.generate_class
+    a = 0
+    delayer.new { a = 1 }
+
+    assert_equal(0, delayer.recursive_level)
+    delayer.recursive_push!
+    assert_equal(1, delayer.recursive_level)
+
+    delayer.new { a = 2 }
+
+    assert_equal(0, a)
+    delayer.run
+    assert_equal(2, a)
+
+    delayer.recursive_pop!
+    assert_equal(0, delayer.recursive_level)
+
+    delayer.run
+    assert_equal(1, a)
+  end
+
+  def test_pop_recursive_mainloop_remain_jobs
+    delayer = Delayer.generate_class
+    delayer.recursive_push!
+    delayer.new{ ; }
+    assert_raise Delayer::RemainJobsError do
+      delayer.recursive_pop!
+    end
+  end
+
+  def test_pop_recursive_mainloop_in_level_zero
+    delayer = Delayer.generate_class
+    assert_raise Delayer::NoLowerLevelError do
+      delayer.recursive_pop!
+    end
+  end
+
 end
