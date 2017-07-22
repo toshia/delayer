@@ -167,26 +167,26 @@ module Delayer
       end
     end
 
-    # Delayerの再帰レベルをインクリメントする。
-    # このメソッドが呼ばれたら、その時存在するジョブは退避され、recursive_pop!が呼ばれるまで実行されない。
-    def recursive_push!
+    # DelayerのStashレベルをインクリメントする。
+    # このメソッドが呼ばれたら、その時存在するジョブは退避され、stash_exit!が呼ばれるまで実行されない。
+    def stash_enter!
       @bucket = Bucket.new(nil, nil, {}, @bucket)
       self
     end
 
-    # Delayerの再帰レベルをデクリメントする。
+    # DelayerのStashレベルをデクリメントする。
     # このメソッドを呼ぶ前に、現在のレベルに存在するすべてのジョブを実行し、Delayer#empty?がtrueを返すような状態になっている必要がある。
     # ==== Raises
-    # [Delayer::NoLowerLevelError] recursive_push!が呼ばれていない時
+    # [Delayer::NoLowerLevelError] stash_enter!が呼ばれていない時
     # [Delayer::RemainJobsError] ジョブが残っているのにこのメソッドを呼んだ時
-    def recursive_pop!
-      raise Delayer::NoLowerLevelError, 'recursive_pop! called in level 0.' if !@bucket.stashed
+    def stash_exit!
+      raise Delayer::NoLowerLevelError, 'stash_exit! called in level 0.' if !@bucket.stashed
       raise Delayer::RemainJobsError, 'Current level has remain jobs. It must be empty current level jobs in call this method.' if !self.empty?
       @bucket = @bucket.stashed
     end
 
-    # 現在のDelayer再帰レベルを返す。
-    def recursive_level
+    # 現在のDelayer Stashレベルを返す。
+    def stash_level
       @bucket.stash_size
     end
 
