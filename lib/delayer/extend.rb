@@ -22,7 +22,7 @@ module Delayer
   def initialize(priority = self.class.instance_eval { @default_priority }, *_args, &proc)
     self.class.validate_priority priority
     @priority = priority
-    @procedure = Procedure.new(self, &Proc.new)
+    @procedure = Procedure.new(self, &proc)
   end
 
   # Cancel this job
@@ -146,8 +146,8 @@ module Delayer
       self
     end
 
-    def register_remain_hook
-      @remain_hook = Proc.new
+    def register_remain_hook(&proc)
+      @remain_hook = proc
     end
 
     def get_prev_point(priority)
