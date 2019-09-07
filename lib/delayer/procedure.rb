@@ -1,11 +1,12 @@
-# -*- coding: utf-8 -*-
+# frozen_string_literal: true
 
 module Delayer
   class Procedure
     attr_reader :state, :delayer
     attr_accessor :next
     def initialize(delayer, &proc)
-      @delayer, @proc = delayer, proc
+      @delayer = delayer
+      @proc = proc
       @state = :stop
       @next = nil
       @delayer.class.register(self)
@@ -17,9 +18,10 @@ module Delayer
     # ==== Return
     # node
     def run
-      unless :stop == @state
-        raise Delayer::StateError(@state), "call twice Delayer::Procedure"
+      unless @state == :stop
+        raise Delayer::StateError(@state), 'call twice Delayer::Procedure'
       end
+
       @state = :run
       @proc.call
       @state = :done
@@ -32,9 +34,10 @@ module Delayer
     # ==== Return
     # self
     def cancel
-      unless :stop == @state
-        raise Delayer::StateError(@state), "cannot cancel Delayer::Procedure"
+      unless @state == :stop
+        raise Delayer::StateError(@state), 'cannot cancel Delayer::Procedure'
       end
+
       @state = :cancel
       self
     end
@@ -43,7 +46,7 @@ module Delayer
     # ==== Return
     # true if canceled this task
     def canceled?
-      :cancel == @state
+      @state == :cancel
     end
 
     # insert node between self and self.next

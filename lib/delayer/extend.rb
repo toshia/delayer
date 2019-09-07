@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# frozen_string_literal: true
 
 module Delayer
   attr_reader :priority
@@ -19,7 +19,7 @@ module Delayer
     end
   end
 
-  def initialize(priority = self.class.instance_eval{ @default_priority }, *args)
+  def initialize(priority = self.class.instance_eval { @default_priority }, *_args, &proc)
     self.class.validate_priority priority
     @priority = priority
     @procedure = Procedure.new(self, &Proc.new)
@@ -57,16 +57,16 @@ module Delayer
     # ==== Return
     # self
     def run(current_expire = @expire)
-      if 0 == current_expire
-        run_once while not empty?
+      if current_expire == 0
+        run_once until empty?
       else
         @end_time = Time.new.to_f + @expire
-        run_once while not(empty?) and @end_time >= Time.new.to_f
+        run_once while !empty? && (@end_time >= Time.new.to_f)
         @end_time = nil
       end
       if @remain_hook
         @remain_received = !empty?
-        @remain_hook.call if @remain_received  
+        @remain_hook.call if @remain_received
       end
     rescue Exception => e
       @exception = e
@@ -74,7 +74,7 @@ module Delayer
     end
 
     def expire?
-      if defined?(@end_time) and @end_time
+      if defined?(@end_time) && @end_time
         @end_time < Time.new.to_f
       else
         false
@@ -88,7 +88,7 @@ module Delayer
       if @bucket.first
         @busy = true
         procedure = forward
-        procedure = forward while @bucket.first and procedure.canceled?
+        procedure = forward while @bucket.first && procedure.canceled?
         procedure.run unless procedure.canceled?
       end
     ensure
@@ -97,7 +97,7 @@ module Delayer
 
     # Return if some jobs processing now.
     # ==== Args
-    # [args] 
+    # [args]
     # ==== Return
     # true if Delayer processing job
     def busy?
@@ -137,10 +137,8 @@ module Delayer
           procedure.next = @bucket.first
           @bucket.priority_of[priority] = @bucket.first = procedure
         end
-        if @bucket.last
-          @bucket.last = @bucket.priority_of[priority]
-        end
-        if @remain_hook and not @remain_received
+        @bucket.last = @bucket.priority_of[priority] if @bucket.last
+        if @remain_hook && !@remain_received
           @remain_received = true
           @remain_hook.call
         end
@@ -157,7 +155,7 @@ module Delayer
         @bucket.priority_of[priority]
       else
         next_index = @priorities.index(priority) - 1
-        get_prev_point @priorities[next_index] if 0 <= next_index
+        get_prev_point @priorities[next_index] if next_index >= 0
       end
     end
 
@@ -180,8 +178,9 @@ module Delayer
     # [Delayer::NoLowerLevelError] stash_enter!が呼ばれていない時
     # [Delayer::RemainJobsError] ジョブが残っているのにこのメソッドを呼んだ時
     def stash_exit!
-      raise Delayer::NoLowerLevelError, 'stash_exit! called in level 0.' if !@bucket.stashed
-      raise Delayer::RemainJobsError, 'Current level has remain jobs. It must be empty current level jobs in call this method.' if !self.empty?
+      raise Delayer::NoLowerLevelError, 'stash_exit! called in level 0.' unless @bucket.stashed
+      raise Delayer::RemainJobsError, 'Current level has remain jobs. It must be empty current level jobs in call this method.' unless empty?
+
       @bucket = @bucket.stashed
     end
 
