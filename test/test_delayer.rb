@@ -353,4 +353,24 @@ class TestDelayer < Test::Unit::TestCase
     end
   end
 
+  def test_timer
+    delayer = Delayer.generate_class expire: 0.01
+    a = []
+    delayer.new(delay: 0.01) { a << 0 }
+    delayer.new { a << 1 }
+
+    delayer.run
+
+    delayer.new { a << 2 }
+    sleep 0.1
+
+    delayer.run
+
+    delayer.new { a << 3 }
+
+    delayer.run
+
+    assert_equal([1, 2, 0, 3], a)
+
+  end
 end

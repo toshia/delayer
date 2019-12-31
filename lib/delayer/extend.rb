@@ -19,10 +19,14 @@ module Delayer
     end
   end
 
-  def initialize(priority = self.class.instance_eval { @default_priority }, *_args, &proc)
+  def initialize(priority = self.class.instance_eval { @default_priority }, *_args, delay: 0, &proc)
     self.class.validate_priority priority
     @priority = priority
-    @procedure = Procedure.new(self, &proc)
+    if delay == 0
+      @procedure = Procedure.new(self, &proc)
+    else
+      @procedure = DelayedProcedure.new(self, delay: delay, &proc)
+   end
   end
 
   # Cancel this job
@@ -57,10 +61,15 @@ module Delayer
     # ==== Return
     # self
     def run(current_expire = @expire)
+      start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      if @reserve&.reserve_at&.<=(start_time)
+        @reserve.register
+        @reserve = @reserve.next
+      end
       if current_expire == 0
         run_once until empty?
       else
-        @end_time = Process.clock_gettime(Process::CLOCK_MONOTONIC) + @expire
+        @end_time = start_time + @expire
         run_once while !empty? && (@end_time >= Process.clock_gettime(Process::CLOCK_MONOTONIC))
         @end_time = nil
       end
@@ -142,6 +151,21 @@ module Delayer
           @remain_received = true
           @remain_hook.call
         end
+      end
+      self
+    end
+
+    # Register reserved job.
+    # It does not execute immediately.
+    # it calls register() in _procedure.reserve_at_.
+    # ==== Args
+    # [procedure] job(Delayer::DelayedProcedure)
+    # ==== Return
+    # self
+    def reserve(procedure)
+      priority = procedure.delayer.priority
+      lock.synchronize do
+        @reserve = procedure
       end
       self
     end
