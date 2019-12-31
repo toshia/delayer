@@ -60,8 +60,8 @@ module Delayer
       if current_expire == 0
         run_once until empty?
       else
-        @end_time = Time.new.to_f + @expire
-        run_once while !empty? && (@end_time >= Time.new.to_f)
+        @end_time = Process.clock_gettime(Process::CLOCK_MONOTONIC) + @expire
+        run_once while !empty? && (@end_time >= Process.clock_gettime(Process::CLOCK_MONOTONIC))
         @end_time = nil
       end
       if @remain_hook
