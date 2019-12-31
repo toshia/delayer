@@ -62,7 +62,7 @@ module Delayer
     # self
     def run(current_expire = @expire)
       start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      if @reserve&.reserve_at&.<=(start_time)
+      while @reserve&.reserve_at&.<=(start_time)
         @reserve.register
         @reserve = @reserve.next
       end
@@ -165,7 +165,11 @@ module Delayer
     def reserve(procedure)
       priority = procedure.delayer.priority
       lock.synchronize do
-        @reserve = procedure
+        if @reserve
+          @reserve = @reserve.add(procedure)
+        else
+          @reserve = procedure
+        end
       end
       self
     end

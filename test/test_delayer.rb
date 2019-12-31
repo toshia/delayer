@@ -371,6 +371,41 @@ class TestDelayer < Test::Unit::TestCase
     delayer.run
 
     assert_equal([1, 2, 0, 3], a)
+  end
 
+  def test_plural_timer
+    delayer = Delayer.generate_class expire: 0.01
+    a = []
+    delayer.new(delay: 0.01) { a << 0 }
+    delayer.new(delay: 0.11) { a << 1 }
+    delayer.new { a << 2 }
+
+    delayer.run
+
+    delayer.new { a << 3 }
+    sleep 0.1
+
+    delayer.run
+    sleep 0.1
+
+    delayer.new { a << 4 }
+
+    delayer.run
+
+    assert_equal([2, 3, 0, 4, 1], a)
+  end
+
+  def test_many_timer
+    delayer = Delayer.generate_class expire: 0.01
+    a = []
+    (0..10).to_a.shuffle.each do |i|
+      delayer.new(delay: i / 100.0) { a << i }
+    end
+
+    sleep 0.1
+
+    delayer.run
+
+    assert_equal((0..10).to_a, a)
   end
 end
