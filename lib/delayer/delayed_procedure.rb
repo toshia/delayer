@@ -10,9 +10,13 @@ module Delayer
       @delayer = delayer
       @proc = proc
       @reserve_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + delay
-      @left = @right = nil
       @left = @right = @cancel = nil
+      @size = 1
       @delayer.class.reserve(self)
+    end
+
+    def size
+      @size
     end
 
     def add(other)
@@ -24,11 +28,12 @@ module Delayer
         child = children.first
         if child
           if @right.right
-            @right = @right.add(child)
-          else
             @left = @left.add(child)
+          else
+            @right = @right.add(child)
           end
         end
+        @size += 1
         self
       end
     end
