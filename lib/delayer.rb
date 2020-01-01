@@ -3,6 +3,7 @@ require "delayer/version"
 require "delayer/error"
 require "delayer/extend"
 require "delayer/procedure"
+require "delayer/delayed_procedure"
 require "monitor"
 
 module Delayer
