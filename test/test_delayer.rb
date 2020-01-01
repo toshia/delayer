@@ -408,4 +408,47 @@ class TestDelayer < Test::Unit::TestCase
 
     assert_equal((0..10).to_a, a)
   end
+
+  def test_cancel_timer
+    delayer = Delayer.generate_class
+    a = 0
+    delayer.new(delay: 0.01) { a += 1 }
+    d = delayer.new(delay: 0.01) { a += 2 }
+    delayer.new(delay: 0.01) { a += 4 }
+
+    assert_equal(0, a)
+    d.cancel
+    sleep 0.1
+    delayer.run
+    assert_equal(5, a)
+  end
+
+  def test_cancel_timer_after_expire
+    delayer = Delayer.generate_class
+    a = 0
+    delayer.new(delay: 0.01) { a += 1 }
+    d = delayer.new(delay: 0.01) { a += 2 }
+    delayer.new{ d.cancel }
+    delayer.new(delay: 0.01) { a += 4 }
+
+    assert_equal(0, a)
+    sleep 0.1
+    delayer.run
+    assert_equal(5, a)
+  end
+
+  def test_reserve_new_timer_after_cancel
+    delayer = Delayer.generate_class
+    a = 0
+    delayer.new(delay: 0.01) { a += 1 }
+    d = delayer.new(delay: 0.02) { a += 2 }
+    d.cancel
+    delayer.new(delay: 0.03) { a += 4 }
+
+    assert_equal(0, a)
+    sleep 0.1
+    delayer.run
+    assert_equal(5, a)
+  end
+
 end

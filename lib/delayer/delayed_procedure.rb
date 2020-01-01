@@ -11,6 +11,7 @@ module Delayer
       @proc = proc
       @reserve_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + delay
       @left = @right = nil
+      @left = @right = @cancel = nil
       @delayer.class.reserve(self)
     end
 
@@ -40,7 +41,9 @@ module Delayer
     end
 
     def register
-      Procedure.new(@delayer, &@proc)
+      if !canceled?
+        @procedure = Procedure.new(@delayer, &@proc)
+      end
     end
 
     def <=>(other)
@@ -53,15 +56,22 @@ module Delayer
     # ==== Return
     # self
     def cancel
-      raise 'TODO'
-      self
+      if @procedure
+        @procedure.cancel
+      else
+        @cancel = true
+      end
     end
 
     # Return true if canceled this task
     # ==== Return
     # true if canceled this task
     def canceled?
-      raise 'TODO'
+      if @procedure
+        @procedure.canceled?
+      else
+        @cancel
+      end
     end
   end
 end
