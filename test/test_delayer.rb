@@ -373,6 +373,16 @@ class TestDelayer < Test::Unit::TestCase
     assert_equal([1, 2, 0, 3], a)
   end
 
+  def test_timer_give_time
+    delayer = Delayer.generate_class expire: 0.01
+    a = []
+    delayer.new(delay: Time.new) { a << 0 }
+
+    delayer.run
+
+    assert_equal([0], a)
+  end
+
   def test_plural_timer
     delayer = Delayer.generate_class expire: 0.01
     a = []

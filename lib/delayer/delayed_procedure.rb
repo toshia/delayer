@@ -9,7 +9,12 @@ module Delayer
     def initialize(delayer, delay:, &proc)
       @delayer = delayer
       @proc = proc
-      @reserve_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + delay
+      case delay
+      when Time
+        @reserve_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + delay.to_f - Time.now.to_f
+      else
+        @reserve_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + delay.to_f
+      end
       @left = @right = @cancel = nil
       @size = 1
       @procedure = nil
