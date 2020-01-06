@@ -26,7 +26,7 @@ module Delayer
       @procedure = Procedure.new(self, &proc)
     else
       @procedure = DelayedProcedure.new(self, delay: delay, &proc)
-   end
+    end
   end
 
   # Cancel this job
@@ -52,6 +52,7 @@ module Delayer
         @remain_received = false
         @lock = Mutex.new
         @bucket = Bucket.new(nil, nil, {}, nil)
+        @reserve = nil
       end
     end
 
@@ -163,7 +164,6 @@ module Delayer
     # ==== Return
     # self
     def reserve(procedure)
-      priority = procedure.delayer.priority
       lock.synchronize do
         if @reserve
           @reserve = @reserve.add(procedure)

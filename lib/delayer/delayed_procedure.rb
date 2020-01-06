@@ -12,6 +12,7 @@ module Delayer
       @reserve_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + delay
       @left = @right = @cancel = nil
       @size = 1
+      @procedure = nil
       @delayer.class.reserve(self)
     end
 
