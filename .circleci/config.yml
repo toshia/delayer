@@ -15,7 +15,7 @@ jobs:
          type: string
     executor:
       name: ruby
-      tag: << parameters.ruby-version >>-stretch-node
+      tag: << parameters.ruby-version >>
     steps:
     - checkout
     - run:
@@ -35,3 +35,6 @@ workflows:
       - build:
           name: 'ruby-2.6'
           ruby-version: '2.6.5'
+      - build:
+          name: 'ruby-2.7'
+          ruby-version: '2.7.0'

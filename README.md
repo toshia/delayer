@@ -1,5 +1,7 @@
 # Delayer
 
+[![toshia](https://circleci.com/gh/toshia/delayer.svg?style=svg)](https://circleci.com/gh/toshia/delayer)
+
 Delay Any task. Similar priority-queue.
 
 ## Installation
