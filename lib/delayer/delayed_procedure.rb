@@ -4,8 +4,7 @@ module Delayer
   class DelayedProcedure
     include Comparable
 
-    attr_reader :state, :delayer, :reserve_at, :right
-
+    attr_reader :state, :delayer, :reserve_at
     def initialize(delayer, delay:, &proc)
       @delayer = delayer
       @proc = proc
@@ -15,40 +14,9 @@ module Delayer
       else
         @reserve_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + delay.to_f
       end
-      @left = @right = @cancel = nil
-      @size = 1
+      @cancel = nil
       @procedure = nil
       @delayer.class.reserve(self)
-    end
-
-    def size
-      @size
-    end
-
-    def add(other)
-      return self unless other
-      if self >= other
-        other.add(self)
-      else
-        @left, *children, @right = [@left, @right, other].compact.sort
-        child = children.first
-        if child
-          if @right.right
-            @left = @left.add(child)
-          else
-            @right = @right.add(child)
-          end
-        end
-        @size += 1
-        self
-      end
-    end
-
-    def next
-      @left&.add(@right).tap do
-        @left = @right = nil
-        freeze
-      end
     end
 
     def register

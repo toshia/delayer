@@ -50,9 +50,22 @@ module Delayer
         @remain_hook = nil
         @exception = nil
         @remain_received = false
-        @lock = Mutex.new
+        @lock = Monitor.new
         @bucket = Bucket.new(nil, nil, {}, nil)
-        @reserve = nil
+        @last_reserve = nil
+        @reserves = Set.new
+      end
+    end
+
+    def pop_reserve(start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC))
+      if @last_reserve&.reserve_at&.<=(start_time)
+        lock.synchronize do
+          while @last_reserve&.reserve_at&.<=(start_time)
+            @last_reserve.register
+            @last_reserve = @reserves.min
+            @reserves.delete(@last_reserve)
+          end
+        end
       end
     end
 
@@ -63,15 +76,12 @@ module Delayer
     # self
     def run(current_expire = @expire)
       start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      while @reserve&.reserve_at&.<=(start_time)
-        @reserve.register
-        @reserve = @reserve.next
-      end
+      pop_reserve(start_time)
       if current_expire == 0
-        run_once until empty?
+        run_once_without_pop_reserve until empty?
       else
         @end_time = start_time + @expire
-        run_once while !empty? && (@end_time >= Process.clock_gettime(Process::CLOCK_MONOTONIC))
+        run_once_without_pop_reserve while !empty? && (@end_time >= Process.clock_gettime(Process::CLOCK_MONOTONIC))
         @end_time = nil
       end
       if @remain_hook
@@ -95,6 +105,11 @@ module Delayer
     # ==== Return
     # self
     def run_once
+      pop_reserve
+      run_once_without_pop_reserve
+    end
+
+    private def run_once_without_pop_reserve
       if @bucket.first
         @busy = true
         procedure = forward
@@ -165,10 +180,15 @@ module Delayer
     # self
     def reserve(procedure)
       lock.synchronize do
-        if @reserve
-          @reserve = @reserve.add(procedure)
+        if @last_reserve
+          if @last_reserve > procedure
+            @reserves.add(@last_reserve)
+            @last_reserve = procedure
+          else
+            @reserves.add(procedure)
+          end
         else
-          @reserve = procedure
+          @last_reserve = procedure
         end
       end
       self
