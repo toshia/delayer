@@ -32,8 +32,12 @@ module Delayer
       end
     end
 
-    def method_missing(*args, &proc)
-      (@default ||= generate_class).__send__(*args, &proc)
+    def method_missing(*args, **kwrest, &proc)
+      if kwrest.empty?
+        (@default ||= generate_class).__send__(*args, &proc)
+      else
+        (@default ||= generate_class).__send__(*args, **kwrest, &proc)
+      end
     end
   end
 end
