@@ -24,7 +24,7 @@ module Delayer
         include ::Delayer
         @expire = options[:expire] || 0
         if options.has_key?(:priority)
-          @priorities = options[:priority]
+          @priorities = options[:priority].to_a.freeze
           @default_priority = options[:default]
         else
           @priorities = [:normal]
@@ -33,11 +33,11 @@ module Delayer
       end
     end
 
-    def method_missing(*args, **kwrest, &proc)
+    def method_missing(fn, *args, **kwrest, &proc)
       if kwrest.empty?
-        (@default ||= generate_class).__send__(*args, &proc)
+        (@default ||= generate_class).__send__(fn, *args, &proc)
       else
-        (@default ||= generate_class).__send__(*args, **kwrest, &proc)
+        (@default ||= generate_class).__send__(fn, *args, **kwrest, &proc)
       end
     end
   end

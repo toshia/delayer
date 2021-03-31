@@ -23,7 +23,7 @@ module Delayer
       end
 
       @state = :run
-      @proc.call
+      @proc&.call
       @state = :done
       @proc = nil
     end

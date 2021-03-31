@@ -3,10 +3,20 @@
 module Delayer
   attr_reader :priority
 
-  Bucket = Struct.new(:first, :last, :priority_of, :stashed) do
+  class Bucket
+    attr_accessor :first, :last, :priority_of, :stashed
+
+    def initialize(first, last, priority_of, stashed)
+      @first = first
+      @last = last
+      @priority_of = priority_of
+      @stashed = stashed
+    end
+
     def stash_size
-      if stashed
-        1 + stashed.stash_size
+      s = stashed
+      if s
+        1 + s.stash_size
       else
         0
       end
@@ -75,13 +85,13 @@ module Delayer
     # ==== Return
     # self
     def run(current_expire = @expire)
-      start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC).to_f
       pop_reserve(start_time)
       if current_expire == 0
         run_once_without_pop_reserve until empty?
       else
-        @end_time = start_time + @expire
-        run_once_without_pop_reserve while !empty? && (@end_time >= Process.clock_gettime(Process::CLOCK_MONOTONIC))
+        @end_time = end_time = start_time + @expire
+        run_once_without_pop_reserve while !empty? && (end_time >= Process.clock_gettime(Process::CLOCK_MONOTONIC))
         @end_time = nil
       end
       if @remain_hook
@@ -94,11 +104,7 @@ module Delayer
     end
 
     def expire?
-      if defined?(@end_time) && @end_time
-        @end_time < Time.new.to_f
-      else
-        false
-      end
+      !!@end_time&.<(Time.new.to_f)
     end
 
     # Run a job and forward pointer.
@@ -113,8 +119,10 @@ module Delayer
       if @bucket.first
         @busy = true
         procedure = forward
-        procedure = forward while @bucket.first && procedure.canceled?
-        procedure.run unless procedure.canceled?
+        procedure = forward while @bucket.first && procedure&.canceled?
+        if procedure && !procedure.canceled?
+          procedure.run
+        end
       end
     ensure
       @busy = false
@@ -202,8 +210,10 @@ module Delayer
       if @bucket.priority_of[priority]
         @bucket.priority_of[priority]
       else
-        next_index = @priorities.index(priority) - 1
-        get_prev_point @priorities[next_index] if next_index >= 0
+        @priorities.index(priority)&.yield_self do |index|
+          next_index = index - 1
+          get_prev_point @priorities[next_index] if next_index >= 0
+        end
       end
     end
 
@@ -226,10 +236,11 @@ module Delayer
     # [Delayer::NoLowerLevelError] stash_enter!が呼ばれていない時
     # [Delayer::RemainJobsError] ジョブが残っているのにこのメソッドを呼んだ時
     def stash_exit!
-      raise Delayer::NoLowerLevelError, 'stash_exit! called in level 0.' unless @bucket.stashed
+      stashed = @bucket.stashed
+      raise Delayer::NoLowerLevelError, 'stash_exit! called in level 0.' unless stashed
       raise Delayer::RemainJobsError, 'Current level has remain jobs. It must be empty current level jobs in call this method.' unless empty?
 
-      @bucket = @bucket.stashed
+      @bucket = stashed
     end
 
     # 現在のDelayer Stashレベルを返す。
@@ -242,10 +253,11 @@ module Delayer
     def forward
       lock.synchronize do
         prev = @bucket.first
-        @bucket.first = @bucket.first.next
-        @bucket.last = nil unless @bucket.first
+        raise 'Current bucket not found' unless prev
+        nex = @bucket.first = prev.next
+        @bucket.last = nil unless nex
         @bucket.priority_of.each do |priority, pointer|
-          @bucket.priority_of[priority] = @bucket.first if prev == pointer
+          @bucket.priority_of[priority] = nex if prev == pointer
         end
         prev.next = nil
         prev

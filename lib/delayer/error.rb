@@ -20,6 +20,8 @@ module Delayer
       AlreadyExecutedError
     when :cancel
       AlreadyCanceledError
+    else
+      TooLate
     end
   end
 end

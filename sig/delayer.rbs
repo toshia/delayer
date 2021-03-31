@@ -1,0 +1,150 @@
+# TypeProf 0.13.0
+
+# Classes
+module Delayer
+  type clock = Float | Integer | Rational
+
+  VERSION: String
+  extend Extend
+  extend Delayer
+  self.@expire: clock
+  self.@priorities: Array[Symbol]
+  self.@default_priority: Symbol
+  self.@default: singleton(Delayer)
+  @procedure: Procedure | DelayedProcedure
+  self.@busy: bool
+  self.@remain_hook: ^() -> void
+  self.@exception: Exception?
+  self.@remain_received: bool
+  self.@lock: Monitor
+  self.@bucket: Bucket
+  self.@last_reserve: nil
+  self.@reserves: untyped
+  @default_priority: Symbol
+  self.@end_time: clock?
+
+  class GeneratedDelayerAbstract
+    include ::Delayer
+  end
+
+  def self.generate_class: (?Hash[Symbol,Integer|Symbol|Enumerable[Symbol]] options) -> singleton(Delayer)
+  def self.method_missing: (Symbol, *untyped, **untyped) { (*untyped) -> untyped } -> untyped
+
+  def self.StateError: (:cancel) -> singleton(AlreadyCanceledError)
+                     | (:done) -> singleton(AlreadyExecutedError)
+                     | (:run) -> singleton(AlreadyRunningError)
+                     | (Symbol) -> singleton(TooLate)
+
+  attr_reader priority: Symbol
+  def self.included: (singleton(Delayer) klass) -> void
+  def initialize: (?untyped priority, *untyped _args, ?delay: Time | clock) -> void
+  def cancel: -> Delayer
+  def stash_size: -> (Integer)
+  def __send__: (Symbol, *untyped, **untyped) { (untyped) -> untyped } -> untyped
+
+  class DelayedProcedure
+    include Comparable
+    @proc: (^() -> void)
+    @cancel: bool
+    @procedure: Procedure?
+
+    attr_reader state: untyped
+    attr_reader delayer: Delayer
+    attr_reader reserve_at: clock
+    def initialize: (Delayer delayer, delay: Time | clock) { () -> void } -> void
+    def register: -> self
+    def <=>: (DelayedProcedure other) -> Integer?
+    def cancel: -> self
+    def canceled?: -> bool
+  end
+
+  class Error < StandardError
+  end
+
+  class TooLate < Error
+  end
+
+  class AlreadyExecutedError < TooLate
+  end
+
+  class AlreadyCanceledError < TooLate
+  end
+
+  class AlreadyRunningError < TooLate
+  end
+
+  class InvalidPriorityError < Error
+  end
+
+  class RecursiveError < Error
+  end
+
+  class NoLowerLevelError < RecursiveError
+  end
+
+  class RemainJobsError < RecursiveError
+  end
+
+  class Bucket
+    attr_accessor first(): Procedure?
+    attr_accessor last(): Procedure?
+    attr_accessor priority_of(): Hash[Symbol, Procedure?]
+    attr_accessor stashed(): Bucket?
+
+    def initialize: (Procedure?,Procedure?,Hash[Symbol, Procedure],Bucket?) -> void
+    def stash_size: () -> Integer
+  end
+
+  module Extend
+    @last_reserve: untyped
+    @lock: Monitor
+    @end_time: clock?
+    @bucket: Bucket
+    @remain_hook: ^() -> void
+    @remain_received: bool
+    @busy: bool
+    @priorities: Array[Symbol]
+    @reserves: Set[DelayedProcedure]
+
+    attr_accessor expire: clock
+    attr_reader exception: Exception?
+    def self.extended: (singleton(Delayer) klass) -> singleton(Delayer)
+    def pop_reserve: (?clock start_time) -> nil
+    def run: (?clock? current_expire) -> void
+    def expire?: -> bool
+    def run_once: -> void
+
+    private
+    def run_once_without_pop_reserve: -> void
+
+    public
+    def busy?: -> bool
+    def empty?: -> bool
+    def size: (?Delayer::Procedure? node) -> Integer
+    def register: (untyped procedure) -> Extend
+    def reserve: (untyped procedure) -> Extend
+    def register_remain_hook: () { () -> void } -> void
+    def get_prev_point: (Symbol) -> ::Delayer::Procedure?
+    def validate_priority: (Symbol) -> void
+    def stash_enter!: -> Extend
+    def stash_exit!: -> Bucket?
+    def stash_level: -> untyped
+
+    private
+    def forward: -> Procedure?
+    def lock: -> Monitor
+  end
+
+  class Procedure
+    @proc: (^() -> void)?
+
+    attr_reader state: :cancel | :done | :run | :stop
+    attr_reader delayer: untyped
+    attr_accessor next: Delayer::Procedure?
+    def initialize: (Delayer delayer) { () -> void } -> void
+    def run: -> void
+    def cancel: -> Procedure
+    def canceled?: -> bool
+    def break: (untyped node) -> untyped
+  end
+end
